@@ -1,7 +1,6 @@
 import os
 import yaml
 import pprint
-from ServoMotor import ServoMotor
 
 CONFIG_FOLDER_LOCATION = "Motor Config Files"
 ROBOT_CONFIG_FILE_NAME =  "robot_setup_config.yaml"
@@ -16,13 +15,6 @@ def load_config_file_from_yaml(location):
 def load_joint_configs_from_config_file(location):
     robot_config_file = load_config_file_from_yaml(location)
     pprint.pprint(robot_config_file)
-    
-
-def create_servo_object_from_config_file(config_file_location):
-    servo_config_dict = load_config_file_from_yaml(config_file_location)
-    return ServoMotor(
-        pin=servo_config_dict["pin_out"], 
-        config_dict=servo_config_dict)
 
 def link_joints_from_config_file(config_file_location):
     """returns a dict of Joint objects that have been specified in a config file, in the order they appear in on the robot. each joint carries a name (even if its joint1 etc.)"""

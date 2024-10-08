@@ -1,6 +1,5 @@
 from ServoMotor import ServoMotor
 import config_scripts
-from config_scripts import ServoMotor
 import os
 from pprint import pprint
 import yaml
@@ -63,7 +62,6 @@ class RevoluteJoint(Joint):
     def update_target_pwm(self, pwm_value):
         """updates the target pwm value of our joint"""
 
-    
 
 class PrismaticJoint(Joint):
     """A Joint that moves in a straight line. This is used for our gripper."""
