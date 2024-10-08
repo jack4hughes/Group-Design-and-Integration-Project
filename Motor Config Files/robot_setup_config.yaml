@@ -1,0 +1,52 @@
+- name: shoulder 
+  servo_config_file: servo_1_config.yaml
+  joint_type: revolute
+  pwm_pin: None
+  min_joint_angle: -90
+  max_joint_angle: 90
+  initial_joint_angle: 0
+  dh_values:
+    joint_angle: 0
+    joint_distance: 5
+    common_normal_length: 3
+    link_twist_angle: 0
+
+- name: elbow
+  servo_config_file: servo_1_config.yaml
+  pwm_pin: None
+  joint_type: revolute
+  min_joint_angle: -90
+  max_joint_angle: 90
+  initial_joint_angle: 0
+  dh_values:
+    joint_angle: 0
+    joint_distance: 0
+    common_normal_length: 0
+    link_twist_angle: 0
+
+- name: wrist
+  servo_config_file: servo_1_config.yaml
+  joint_type: revolute
+  min_joint_angle: -90
+  max_joint_angle: 90
+  initial_joint_angle: 0
+  pwm_pin: None
+  dh_values:
+    joint_angle: 0
+    joint_distance: 0
+    common_normal_length: 0
+    link_twist_angle: 0
+
+- name: gripper
+  servo_config_file: servo_1_config.yaml
+  joint_type: prismatic
+  min_joint_extension: 0
+  max_joint_extension: None
+  initial_distance: 0
+  pwm_pin: None
+  dh_values:
+    joint_angle: 0
+    joint_distance: 0
+    common_normal_length: 0
+    link_twist_angle: 0
+
