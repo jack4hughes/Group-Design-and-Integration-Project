@@ -5,7 +5,7 @@
   min_joint_angle: -90
   max_joint_angle: 90
   initial_joint_angle: 0
-  dh_values:
+  initial_dh_dict:
     joint_angle: 0
     joint_distance: 5
     common_normal_length: 3
@@ -18,7 +18,7 @@
   min_joint_angle: -90
   max_joint_angle: 90
   initial_joint_angle: 0
-  dh_values:
+  initial_dh_dict:
     joint_angle: 0
     joint_distance: 0
     common_normal_length: 0
@@ -31,7 +31,7 @@
   max_joint_angle: 90
   initial_joint_angle: 0
   pwm_pin: None
-  dh_values:
+  initial_dh_dict:
     joint_angle: 0
     joint_distance: 0
     common_normal_length: 0
@@ -44,7 +44,7 @@
   max_joint_extension: None
   initial_distance: 0
   pwm_pin: None
-  dh_values:
+  initial_dh_dict:
     joint_angle: 0
     joint_distance: 0
     common_normal_length: 0

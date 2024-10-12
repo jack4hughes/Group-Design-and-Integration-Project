@@ -14,11 +14,11 @@ def load_config_file_from_yaml(location):
 
 def load_joint_configs_from_config_file(location):
     robot_config_file = load_config_file_from_yaml(location)
-    pprint.pprint(robot_config_file)
+    return robot_config_file
 
-def link_joints_from_config_file(config_file_location):
-    """returns a dict of Joint objects that have been specified in a config file, in the order they appear in on the robot. each joint carries a name (even if its joint1 etc.)"""
-    pass
 
 if __name__ == "__main__":
-    load_joint_configs_from_config_file(config_file_location)
+    print("Robot config file\n")
+    pprint.pprint(load_joint_configs_from_config_file(config_file_location))
+    print("\njoint config file\n")
+    pprint.pprint(load_config_file_from_yaml("Motor Config Files/servo_2_config.yaml"))

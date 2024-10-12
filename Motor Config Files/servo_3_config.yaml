@@ -1,4 +1,6 @@
 ---
+servo_name: servo_3
+servo_type: HS-755HB
 degrees_of_movement: 180
 duty_cyle_ms: 20
 max_angle_duty_cycle_ms: 2.5
