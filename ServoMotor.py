@@ -6,6 +6,7 @@ import numpy as np
 from numpy import sin, cos  
 from typing import Union
 import typing
+#from machine import Pin    only enable for micropython build.
 
 class ServoMotor:
     # servo motor refactored to take in an unpacked dict.
@@ -21,7 +22,7 @@ class ServoMotor:
                  servo_type: str = "Unknown",
                  torque: float = None,
                  volts: float = None,
-                 pin_out: float= None,
+                 pin_out = None,
                  **kwargs) -> None:
 
         if type(config_info) == str:
@@ -48,11 +49,23 @@ class ServoMotor:
             self.volts = volts
             self.pin_out = pin_out
 
+            # self.pwm_control = self.create_pwm_pin(self, pin_number = self.pin_out)
         self.other_info = kwargs
     
-    def update_position(new_position_pwm_value):
-        """Updates the position of our servo based directly off of PWM values. This is how we actually move the motors."""
+    def update_position(self, pwm_value):
+        """Updates the duty cycle of the servo, changing its positon."""
+        self.duty_cycle_ms = pwm_value
+        #write pin logiv here.
         pass
+
+    def create_pwm_pin(self, pin_number = None):
+        if pin_number != None:
+            self.pin_out = pin_number
+        
+        #pwm_pin = machine.Pin(pin_number)
+        #pwm = PWM(pin, pwm_frequency)
+
+        return
 
     def __str__(self):
         output = f"{self.servo_name} information:\n\n"
