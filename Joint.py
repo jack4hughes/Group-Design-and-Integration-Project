@@ -1,4 +1,4 @@
-from ServoMotor import ServoMotor, create_servo
+from ServoMotor import ServoMotor
 import config_scripts
 import os
 from pprint import pprint
@@ -6,8 +6,12 @@ import yaml
 import numpy as np
 from numpy import sin, cos  
 
+ANGLE_UNITS = "°"
+DISTANCE_UNITS = "cm"
+TIME_UNITS = "ms"
 CONFIG_FOLDER_LOCATION = "Motor Config Files"
 ROBOT_CONFIG_FILE_NAME =  "robot_setup_config.yaml"
+
 config_file_location = os.path.join(CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME)
 
 def create_dh_matrix_from_dict(dh_dict: dict) -> np.array:
@@ -81,8 +85,15 @@ class RevoluteJoint(Joint):
     def __str__(self):
         output = ""
         output += f"{self.name}:\n"
-        output += f"current angle: {self.angle}\t{self.servo_motor.duty_cyle_ms}ms\n"
+        output += f"current angle: {self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}\n"
         return output
+    
+    def print_table_view(self):
+        if len(self.name) < 8:
+            print_string = f"{self.name}\t\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+        else:
+            print_string = f"{self.name}\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+        print(print_string)
 
 class PrismaticJoint(Joint):
     """A Joint that moves in a straight line. This is used for our gripper."""
@@ -114,8 +125,15 @@ class PrismaticJoint(Joint):
     def __str__(self):
         output = ""
         output += f"{self.name}:\n"
-        output += f"current extension: {self.extension}\t{self.servo_motor.duty_cyle_ms}"
+        output += f"current extension: {self.extension}{DISTANCE_UNITS}\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
         return output
+    
+    def print_table_view(self):
+        if len(self.name) < 8:
+            print_string = f"{self.name}\t\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+        else:
+            print_string = f"{self.name}\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+        print(print_string)
 
 def create_joint_from_robot_config_dict(joint_information_dict):
     if joint_information_dict["joint_type"] == "revolute":
@@ -137,3 +155,9 @@ if __name__ == "__main__":
     print(elbow)
     print(wrist)
     print(gripper)
+
+    base.print_table_view()
+    shoulder.print_table_view()
+    elbow.print_table_view()
+    wrist.print_table_view()
+    gripper.print_table_view()
