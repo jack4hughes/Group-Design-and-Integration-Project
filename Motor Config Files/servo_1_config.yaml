@@ -1,13 +1,14 @@
 ---
 servo_name: shoulder
 servo_type: HiTec HS-485HB
-degrees_of_movement: 180
-duty_cyle_ms: 20
-max_angle_duty_cycle_ms: 2.5
-max_degree_value: 90
-min_angle_duty_cycle_ms: 0.5
-min_degree_value: -90
-stall-torque: 11
+range_of_motion:
+  - -90
+  - 90
+duty_cycle_range:
+  - 500
+  - 2500
+initial_duty_cycle: 1500
+torque: 11
 volts: 4.8
 pin_out: 1
 ...
