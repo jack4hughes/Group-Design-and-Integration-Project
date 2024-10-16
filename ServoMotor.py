@@ -36,7 +36,7 @@ class ServoMotor:
 
             self.duty_cycle_range = duty_cycle_range
             self.range_of_motion = range_of_motion
-
+            self.duty_cycle = initial_duty_cycle
             self.torque = torque
             self.volts = volts
             self.pin_out = pin_out
@@ -52,26 +52,29 @@ class ServoMotor:
 
         return output
     
-    def update_pwm_control_value(self, pwm_value):
-        """Updates the duty cycle of the servo, changing its positon."""
-        self.duty_cycle_ms = pwm_value
+    def update_pwm_control_value(self, pwm_value: Union[int, float]) -> None:
+        """Updates the duty cycle of the servo, changing its positon.
+        
+        NOTE: we should never change this directly when testing an assembled robot, instead servos should be attached to 
+        Joint objects first, then we can use the methods to adjust each joint. If the PWM duty cycle or pulse width for the servo 
+        is changed directly the corresponding joint angle will not be updated, resulting in unpredictable behavhior."""
+        
+        if pwm_value < self.duty_cycle_range[0] or pwm_value > self.duty_cycle_range[1]:
+            raise ValueError("The PWM specified is outside of this servos operating range.")
+        
+        self.duty_cycle = pwm_value # makes sure duty cycle does not exceed servo limits.
+        return
 
-    def angle_to_pwm(self, angle):
+    def angle_to_pwm(self, angle: Union[int, float]) -> Union[int, float]:
         """Calculates PWM values from angles, maybe PWM should be done directly if used often."""
         return scale_transform(angle, self.range_of_motion, self.duty_cycle_range)
 
-    def pwm_to_angle(self, pwm):
+    def pwm_to_angle(self, angle: Union[int, float]) -> Union[int, float]:
         return scale_transform(pwm, self.duty_cycle_range, self.range_of_motion)
     
     def create_pwm_pin(self, pin_number = None):
-        if pin_number != None:
-            self.pin_out = pin_number
-        
-        #pwm_pin = machine.Pin(pin_number)
-        #pwm = PWM(pin, pwm_frequency)
-
-        return pwm_output
-
+        pass
+    
 if __name__ == "__main__":
     test_servo_config_file_location = os.path.join("Motor Config Files", "servo_1_config.yaml")
     test_servo_dict = config_scripts.load_config_file_from_yaml(test_servo_config_file_location)

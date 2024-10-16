@@ -5,12 +5,8 @@ from pprint import pprint
 import yaml
 import numpy as np
 from numpy import sin, cos  
-
-ANGLE_UNITS = "°"
-DISTANCE_UNITS = "cm"
-TIME_UNITS = "ms"
-CONFIG_FOLDER_LOCATION = "Motor Config Files"
-ROBOT_CONFIG_FILE_NAME =  "robot_setup_config.yaml"
+from Helper import ANGLE_UNITS, TIME_UNITS, DISTANCE_UNITS, CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME
+from Helper import scale_transform
 
 config_file_location = os.path.join(CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME)
 
@@ -85,14 +81,26 @@ class RevoluteJoint(Joint):
     def __str__(self):
         output = ""
         output += f"{self.name}:\n"
-        output += f"current angle: {self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}\n"
+        output += f"current angle: {self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}\n"
         return output
     
+
+    def update_angle(self, target_angle) -> None:
+        if self.min_angle > target_angle or self.max_angle < target_angle:
+            raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {target_angle} min_val: {self.min_angle} max_val: {self.max_angle}")
+            return
+        
+        self.angle = target_angle
+        target_pwm = self.servo_motor.angle_to_pwm(target_angle)
+        self.servo_motor.update_pwm_control_value(target_pwm)
+
+    
     def print_table_view(self):
+        #TODO abstract this out!
         if len(self.name) < 8:
-            print_string = f"{self.name}\t\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+            print_string = f"{self.name}\t\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
         else:
-            print_string = f"{self.name}\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+            print_string = f"{self.name}\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
         print(print_string)
 
 class PrismaticJoint(Joint):
@@ -125,14 +133,24 @@ class PrismaticJoint(Joint):
     def __str__(self):
         output = ""
         output += f"{self.name}:\n"
-        output += f"current extension: {self.extension}{DISTANCE_UNITS}\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+        output += f"current dist:\t{self.extension}{DISTANCE_UNITS}\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
         return output
     
+    def update_angle(self, target_position) -> None:
+        if self.min_extension > target_position or self.max_extension < target_position:
+            raise ValueError(f"Impossible position: the position provided is outside of our joint constraints. position: {target_position} min_val: {self.min_extension} max_val: {self.max_extension}")
+            return
+        
+        self.extension = target_position
+        target_pwm = scale_transform(target_position, (self.min_extension, self.max_extension), self.servo_motor.duty_cycle_range)
+        self.servo_motor.update_pwm_control_value(target_pwm)
+    
     def print_table_view(self):
+        #TODO abstract this out!
         if len(self.name) < 8:
-            print_string = f"{self.name}\t\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+            print_string = f"{self.name}\t\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
         else:
-            print_string = f"{self.name}\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle_ms}{TIME_UNITS}"
+            print_string = f"{self.name}\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
         print(print_string)
 
 def create_joint_from_robot_config_dict(joint_information_dict):
@@ -155,9 +173,3 @@ if __name__ == "__main__":
     print(elbow)
     print(wrist)
     print(gripper)
-
-    base.print_table_view()
-    shoulder.print_table_view()
-    elbow.print_table_view()
-    wrist.print_table_view()
-    gripper.print_table_view()
