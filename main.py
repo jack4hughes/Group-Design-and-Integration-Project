@@ -5,6 +5,7 @@ from time import time
 from Helper import ANGLE_UNITS, TIME_UNITS, DISTANCE_UNITS, CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME
 from time import sleep
 import os
+from  Robot import Robot, create_joint_list_from_config_file
 
 REFRESH_FREQUENCY = 0.1 #in seconds
 
@@ -27,4 +28,8 @@ def main_loop():
     print(time())
 
 if __name__ == "__main__":
+    robot_joints = create_joint_list_from_config_file("Motor Config Files/robot_setup_config.yaml")
+    robot = Robot("Vanessa", robot_joints)
+    Robot()
+    print(string)
     main_loop()
