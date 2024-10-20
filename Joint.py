@@ -75,6 +75,10 @@ class RevoluteJoint(Joint):
         
         self.min_angle = min_angle
         self.max_angle = max_angle
+
+        self.min_pwm = self.servo_motor.angle_to_pwm(min_angle)
+        self.max_pwm = self.servo_motor.angle_to_pwm(max_angle)
+
         self.initial_angle = initial_angle
         self.angle = initial_angle
     
@@ -93,14 +97,19 @@ class RevoluteJoint(Joint):
         self.angle = target_angle
         target_pwm = self.servo_motor.angle_to_pwm(target_angle)
         self.servo_motor.update_pwm_control_value(target_pwm)
+    
+    def update_pwm(self, target_pwm) -> None:
+        target_pwm = self.servo_motor.angle_to_pwm(target_pwm)
+        if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
+            raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
+            return
+        
+        self.angle = self.servo_motor.pwm_to_angle(target_pwm)
+        self.servo_motor.update_pwm_control_value(target_pwm)
 
     
     def print_table_view(self):
-        #TODO abstract this out!
-        if len(self.name) < 8:
-            print_string = f"{self.name}\t\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
-        else:
-            print_string = f"{self.name}\t\t{self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
+        print_string = f"{self.name:15}{self.angle}{ANGLE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         print(print_string)
 
 class PrismaticJoint(Joint):
@@ -133,7 +142,7 @@ class PrismaticJoint(Joint):
     def __str__(self):
         output = ""
         output += f"{self.name}:\n"
-        output += f"current dist:\t{self.extension}{DISTANCE_UNITS}\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
+        output += f"current distance: {self.extension}{DISTANCE_UNITS:10}\t{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         return output
     
     def update_angle(self, target_position) -> None:
@@ -145,12 +154,17 @@ class PrismaticJoint(Joint):
         target_pwm = scale_transform(target_position, (self.min_extension, self.max_extension), self.servo_motor.duty_cycle_range)
         self.servo_motor.update_pwm_control_value(target_pwm)
     
+        def update_pwm(self, target_pwm) -> None:
+            target_pwm = self.servo_motor.angle_to_pwm(target_pwm)
+            if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
+                raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
+                return
+            
+            self.angle = self.servo_motor.pwm_to_angle(target_pwm)
+            self.servo_motor.update_pwm_control_value(target_pwm)
+            
     def print_table_view(self):
-        #TODO abstract this out!
-        if len(self.name) < 8:
-            print_string = f"{self.name}\t\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
-        else:
-            print_string = f"{self.name}\t\t{self.extension}{DISTANCE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}"
+        print_string = f"{self.name:15}{self.extension}{DISTANCE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         print(print_string)
 
 def create_joint_from_robot_config_dict(joint_information_dict):
@@ -160,16 +174,8 @@ def create_joint_from_robot_config_dict(joint_information_dict):
         return PrismaticJoint(**joint_information_dict)
     
 if __name__ == "__main__":
-    joints = config_scripts.load_config_file_from_yaml("Motor Config Files/robot_setup_config.yaml")
+    joint_info_dicts = config_scripts.load_config_file_from_yaml("Motor Config Files/robot_setup_config.yaml")
+    joints = [create_joint_from_robot_config_dict(joint_info_dict) for joint_info_dict in joint_info_dicts]
 
-    base = RevoluteJoint(**joints[0])
-    shoulder = RevoluteJoint(**joints[1])
-    elbow = RevoluteJoint(**joints[2])
-    wrist = RevoluteJoint(**joints[3])
-    gripper = PrismaticJoint(**joints[4])
-
-    print(base)
-    print(shoulder)
-    print(elbow)
-    print(wrist)
-    print(gripper)
+    for joint in joints:
+        print(joint)

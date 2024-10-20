@@ -62,7 +62,7 @@ class ServoMotor:
         if pwm_value < self.duty_cycle_range[0] or pwm_value > self.duty_cycle_range[1]:
             raise ValueError("The PWM specified is outside of this servos operating range.")
         
-        self.duty_cycle = pwm_value # makes sure duty cycle does not exceed servo limits.
+        self.duty_cycle = int(pwm_value) # makes sure duty cycle does not exceed servo limits.
         return
 
     def angle_to_pwm(self, angle: Union[int, float]) -> Union[int, float]:
@@ -71,9 +71,6 @@ class ServoMotor:
 
     def pwm_to_angle(self, angle: Union[int, float]) -> Union[int, float]:
         return scale_transform(pwm, self.duty_cycle_range, self.range_of_motion)
-    
-    def create_pwm_pin(self, pin_number = None):
-        pass
     
 if __name__ == "__main__":
     test_servo_config_file_location = os.path.join("Motor Config Files", "servo_1_config.yaml")
