@@ -99,12 +99,11 @@ class RevoluteJoint(Joint):
         self.servo_motor.update_pwm_control_value(target_pwm)
     
     def update_pwm(self, target_pwm) -> None:
-        target_pwm = self.servo_motor.angle_to_pwm(target_pwm)
+        target_angle = self.servo_motor.pwm_to_angle(target_pwm)
         if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
             raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
             return
         
-        self.angle = self.servo_motor.pwm_to_angle(target_pwm)
         self.servo_motor.update_pwm_control_value(target_pwm)
 
     

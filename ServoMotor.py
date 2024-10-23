@@ -69,7 +69,7 @@ class ServoMotor:
         """Calculates PWM values from angles, maybe PWM should be done directly if used often."""
         return scale_transform(angle, self.range_of_motion, self.duty_cycle_range)
 
-    def pwm_to_angle(self, angle: Union[int, float]) -> Union[int, float]:
+    def pwm_to_angle(self, pwm: Union[int, float]) -> Union[int, float]:
         return scale_transform(pwm, self.duty_cycle_range, self.range_of_motion)
     
 if __name__ == "__main__":

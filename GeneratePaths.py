@@ -12,7 +12,7 @@ def lerp_path_generator(min_value: int, max_value: int, step_length: int):
 
 def triangle_loop(min_value, max_value, step_length):
     """Loops from one angle to another in a triangular way. (IE linear there, linear back)"""
-    path_there = iter(range(min_value, max_value, step_length))
+    path_there = range(min_value, max_value, step_length))
     path_back = iter(range(max_value, min_value, -step_length))
     rotation_cycle = cycle(chain(path_there, path_back))
 

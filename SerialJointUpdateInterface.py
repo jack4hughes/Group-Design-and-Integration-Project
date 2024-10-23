@@ -9,13 +9,15 @@ class ServoPositionUpdater:
     """Our base class for joint updates, all methods should be overwritten by our specific joint update
     implementation"""
     def update_servo(self, joint_id, pwm):
-        raise NotImplementedError("You need to spefify the type of JointUpdaterInterface you want. if using a computer w/ serial use SerialJointUpdaterInterface, if using Rasberry Pi Pico use ")
+        pass
 
     def get_joint_info(self):
-        return NotImplementedError("You need to spefify the type of JointUpdaterInterface you want. if using a computer w/ serial use SerialJointUpdaterInterface, if using Rasberry Pi Pico use ")
+        pass
 
     def turn_servo_off(self, servo_id) -> None:
         self.update_servo(servo_id, 0)
+
+
 class SerialServoPositionUpdater(ServoPositionUpdater):
     """class that opens serial port to send update information directly to SSC 32U chip"""
     def __init__(self, port = None, baudrate: int = 115200):        
