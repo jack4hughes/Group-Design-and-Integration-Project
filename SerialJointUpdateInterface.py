@@ -1,5 +1,8 @@
 from serial import Serial
 from typing import Union, Dict
+from datetime import datetime
+from logging import Logger
+
 try:
     import machine
 except ModuleNotFoundError:
@@ -24,16 +27,15 @@ class SerialServoPositionUpdater(ServoPositionUpdater):
         self.serial = Serial(port = port,
                        baudrate = baudrate)
     
+
     def update_servo(self, servo_id, pwm) -> None:
         """sends a message to update the joint position through the serial interface."""
         servo_string_unicode = f"# {servo_id} P {pwm}\r"
         servo_string_bytes = bytes(servo_string_unicode, 'utf8')
         self.serial.write(servo_string_bytes)
 
-
     def turn_servo_off(self, servo_id) -> None:
         self.update_servo(servo_id, 0)
-    
     
     def get_joint_info(self, joint_id):
         pass

@@ -4,50 +4,114 @@ from inputs import devices
 import hid
 import os
 import time
+from typing import List
+from pprint import pprint
 
-class Controller:
-    def __init__(self, robot: Robot, start_bin = 0x045e, end_bin = 0x0b13):
-      self.hid_input = hid.device()
-      print(self.hid_input)
-      self.hid_input.open(start_bin, end_bin)
-      print(type(self.hid_input))
-      self.hid_input.set_nonblocking(True)
-      
-      self.left_joystick = {"x": 0, "y": 0} #sets up dict
-      self.right_joystick = {"x": 0, "y": 0}
+DEFAULT_JOYSTICK_VALUE = 127
+MAX_JOYSTICK_VALUE = 255
+MAX_TRIGGER_VALUE = 3
+DEADSPOT_SIZE = 10
 
-      self.left_bumper = 0
-      self.right_bumper = 0
+class RobotController:
+    def __init__(self, robot: Robot):
+        self.robot = robot
 
-      self.a_button = 0
-      self.b_button = 0
-    
+
+
+class XBoxController:
+    def __init__(self, robot: Robot, start_bin = 1118, end_bin = 2835):
+        super().__init__()
+        self.hid_input = hid.device()
+        
+        try:
+            self.hid_input.open(start_bin, end_bin)
+            self.hid_input.set_nonblocking(True)
+        except:
+            print("HID Controller couldn't be opened! Please check this list of avaiable HID inputs")
+        # Setting default values for each control.
+        
+        self.left_joystick = {"x": DEFAULT_JOYSTICK_VALUE, "y": DEFAULT_JOYSTICK_VALUE} #sets up dict
+        self.right_joystick = {"x": DEFAULT_JOYSTICK_VALUE, "y": DEFAULT_JOYSTICK_VALUE}
+
+        self.left_trigger = 0
+        self.right_trigger = 0
+
+        self.a_button = False
+        self.b_button = False
+        self.x_button = False
+        self.y_button = False
+
+        self.deadspot_min = DEFAULT_JOYSTICK_VALUE - DEADSPOT_SIZE
+        self.deadspot_max = DEFAULT_JOYSTICK_VALUE + DEADSPOT_SIZE
+
+        self.last_report = None
+
+
     def poll_controller(self): 
         """updates controller inputs if controller is found."""
         report = self.hid_input.read(64) #reads relevant bytes
-
-        if report:
+        if len(report) > 10:
             self.left_joystick["x"] = report[2]
             self.left_joystick["y"] = report[4]
-
 
             self.right_joystick["x"] = report[6]
             self.right_joystick["y"] = report[8]
 
-            self.left_bumper = report[9]
-            self.right_bumper = report[11]
+            self.left_trigger = report[10]
+            self.right_trigger = report[12]
+            
+            self.last_report = report
             return True
         else:
             return False
+        
+    def trigger_processer(self):
+        output = self.left_trigger - self.right_trigger
+
+    def deadspot_control(self, raw_controller_input):
+        if raw_controller_input < self.deadspot_min or raw_controller_input > self.deadspot_max:
+            return raw_controller_input
+        else:
+            return DEFAULT_JOYSTICK_VALUE
+         
+
+    def joystick_processor(self, joystick):
+        vertical = self.deadspot_control(joystick["y"]) - DEFAULT_JOYSTICK_VALUE
+        horizontal = self.deadspot_control(joystick["x"]) - DEFAULT_JOYSTICK_VALUE
+
+        vertical_processed = int(vertical/16)
+        horizontal_processed = int(horizontal/16)
+
+        output =  {"x": horizontal_processed, "y": vertical_processed}
+        return output
+
+    def processed_controller_output(self) -> List[int]:
+        trigger_difference = self.left_trigger - self.right_trigger
+
+        left_joystick_output = self.joystick_processor(self.left_joystick)
+        right_joystick_output = self.joystick_processor(self.right_joystick)
+
+        base_speed = left_joystick_output["x"]
+        shoulder_speed = left_joystick_output["y"]
+
+        elbow_speed = right_joystick_output["y"]
+        wrist_speed = right_joystick_output["x"]
+
+        gripper_speed = trigger_difference
+
+        output_list = [base_speed,shoulder_speed,elbow_speed,wrist_speed,gripper_speed]
+
+        return output_list
+    
 
     def update_joints(self):
         """This is the function that will update our target_pwm values using """ 
-        pass
+
 
     def input_size_string(self, input_value, input_min, input_max):
         input_range = input_max - input_min
         input_normalised = (input_value - input_min)/input_range
-        
+
         seperation_left = int(input_normalised * 16)
         seperation_right = 16 - seperation_left
 
@@ -60,30 +124,38 @@ class Controller:
             
         return output
     
+
     def __str__(self):
+        #Horrible string literals.
         output = ""
-        output += f"{'Left joystick':>15}:\n"
-        output += f"{'':>19}x: {self.input_size_string(self.left_joystick['x'], 0, 255)}"
-        output += f"y: {self.input_size_string(self.left_joystick['y'], 0, 255)}\n"
+        output += f"{'Left joystick:':>13}\n"
+        output += f"{'':>16}x:{self.left_joystick['x']:>4}|{self.input_size_string(self.left_joystick['x'], 0, MAX_JOYSTICK_VALUE)}"
+        output += f"y:{self.left_joystick['y']:>4}|{self.input_size_string(self.left_joystick['y'], 0, MAX_JOYSTICK_VALUE)}\n"
 
-        output += f"{'Right joystick':>15}\n"
-        output += f"{'':>19}x: {self.input_size_string(self.right_joystick['x'], 0, 255)}"
-        output += f"y: {self.input_size_string(self.right_joystick['y'], 0, 255)}\n"
-
-        
-        output += f"\n{self.input_size_string(self.left_bumper, 0, 255)}\n"
-        output += f"\n{self.input_size_string(self.right_bumper, 0, 255)}\n"
+        output += f"{'Right joystick':>13}:\n"
+        output += f"{'':>16}x:{self.right_joystick['x']:>4}|{self.input_size_string(self.right_joystick['x'], 0, MAX_JOYSTICK_VALUE)}"
+        output += f"y:{self.right_joystick['y']:>4}|{self.input_size_string(self.right_joystick['y'], 0, MAX_JOYSTICK_VALUE)}\n"
+    
+        output += f"{'bumpers':>13}\n"
+        output += f"{'left':>16}{self.left_trigger:>6}|{self.input_size_string(self.left_trigger, 0, MAX_TRIGGER_VALUE)}\n"
+        output += f"{'right':>16}{self.right_trigger:>6}|{self.input_size_string(self.right_trigger, 0, MAX_TRIGGER_VALUE)}\n\n"
+        output += str(self.last_report)
         return output
 
 
 if __name__ == "__main__":
-    for device in hid.enumerate():
-        print(f"0x{device['vendor_id']:04x}:0x{device['product_id']:04x} {device['product_string']}")
+    
+    for device_dict in hid.enumerate():
+        keys = list(device_dict.keys())
+        keys.sort()
+        for key in keys:
+            print("%s : %s" % (key, device_dict[key]))
+        print()
 
-    controller = Controller(1)
+    controller = XBoxController(1)
+    i = 0
     while True:
-        right_bumper_position = 9
         new_controller_locations = controller.poll_controller()
         print(controller)
-        time.sleep(0.01)
-        print("\033[2J\033[H")
+        print()
+        time.sleep(0.001)

@@ -105,8 +105,15 @@ class RevoluteJoint(Joint):
             return
         
         self.servo_motor.update_pwm_control_value(target_pwm)
-
+        self.angle = target_angle
+        
+    def increase_pwm_by_x(self, input_size):
+        """Adds input_size to the current PWM value. Used for controller motion."""
+        current_duty_cycle = self.servo_motor.duty_cycle
+        self.update_pwm(current_duty_cycle + input_size)
+        return
     
+
     def print_table_view(self):
         print_string = f"{self.name:15}{self.angle}{ANGLE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         print(print_string)
