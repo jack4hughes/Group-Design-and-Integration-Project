@@ -12,7 +12,7 @@ from SerialJointUpdateInterface import SerialServoPositionUpdater, ServoPosition
 from itertools import cycle, chain
 from Joint import PrismaticJoint, RevoluteJoint
 import config_scripts
-from ControllerLogic import XBoxController
+from ControllerLogic import XBoxController, find_xbox_controller
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -104,7 +104,7 @@ def pwm_update_loop(robot: Robot, base_rotation_generator, shoulder_rotation_gen
 def controller_update_loop(robot: Robot, controller: XBoxController) -> None:
     initial_time = datetime. now()
     if controller.poll_controller():
-        controller_output = controller.processed_controller_output()
+        controller_output = controller.normalised_controller_output()
         robot.update_joints_from_controller_output(controller_output)
 
         for joint in range(len(robot.joints)):
@@ -114,6 +114,7 @@ def controller_update_loop(robot: Robot, controller: XBoxController) -> None:
 
     print(controller)
  
+
 def controller_robot_update_loop(robot: Robot, controller: XBoxController) -> None:
     i = 0
     try:
@@ -124,12 +125,13 @@ def controller_robot_update_loop(robot: Robot, controller: XBoxController) -> No
                 try:
                     
                     controller.poll_controller()
-                    controller_output = controller.processed_controller_output()
+                    controller_output = controller.normalised_controller_output()
                     robot.update_joints_from_controller_output(controller_output)
                     
                     for joint_id in range(len(robot.joints)):
                         robot.send_joint_update_message(joint_id)
                     robot.print_joint_information()
+                    print(controller)
 
                 except ValueError:
                     controller.poll_controller()
@@ -142,10 +144,14 @@ def controller_robot_update_loop(robot: Robot, controller: XBoxController) -> No
         print("User killed process.")
 
 
+NORMAL_ROBOT = "/dev/tty.usbserial-AB0NBPCE"
+TEST_ROBOT = "/dev/tty.usbserial-AI02LCJE"
+
 if __name__ == "__main__":
     #initialises robot.
     try:
-        serial_out = SerialServoPositionUpdater("/dev/tty.usbserial-AB0NBPCE", 115200)
+        serial_out = SerialServoPositionUpdater(NORMAL_ROBOT, 115200)
+    
     except:
         serial_out = ServoPositionUpdater()
         print("robot couldn't be found! simulating joint movement")
@@ -157,7 +163,8 @@ if __name__ == "__main__":
     robot = Robot("Vanessa", robot_joint_info, serial_out)
 
     #create controller object
-    controller = XBoxController(robot)
+    controller_info = find_xbox_controller()
+    controller = XBoxController(robot, 1118, 2835)
 
     print("robot initialised!")
     sleep(1)

@@ -50,25 +50,12 @@
     common_normal_length: 0
     link_twist_angle: 0
 
-- name: wrist_rotation
+- name: gripper
   servo_config_file: servo_1_config.yaml
   joint_type: revolute
   min_angle: -90
   max_angle: 90
   initial_angle: 0
-  pwm_pin: None
-  initial_dh_dict:
-    joint_angle: 0
-    joint_distance: 0
-    common_normal_length: 0
-    link_twist_angle: 0
-
-- name: gripper
-  servo_config_file: servo_1_config.yaml
-  joint_type: prismatic
-  min_extension: 0
-  max_extension: 10
-  initial_extension: 0
   pwm_pin: None
   initial_dh_dict:
     joint_angle: 0

@@ -79,5 +79,3 @@ if __name__ == "__main__":
     #testing that strings and dicts can be entered.
     servo1 = ServoMotor(test_servo_config_file_location)
     servo2 = ServoMotor(test_servo_dict)
-
-    print(servo1)
