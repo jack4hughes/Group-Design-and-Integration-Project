@@ -8,11 +8,12 @@ from typing import List
 from pprint import pprint
 from collections import deque
 import numpy as np
+from datetime import datetime
 
-DEFAULT_JOYSTICK_VALUE = 127
-MAX_JOYSTICK_VALUE = 255
-MAX_TRIGGER_VALUE = 3
-DEADSPOT_SIZE = 10
+DEFAULT_JOYSTICK_VALUE = 32768
+MAX_JOYSTICK_VALUE = 65536
+MAX_TRIGGER_VALUE = 1024
+DEADSPOT_SIZE = 2500
 
 def find_xbox_controller():
     list_of_hid_devices = hid.enumerate()
@@ -103,42 +104,52 @@ class XBoxController:
         self.x_button = False
         self.y_button = False
 
+        self.left_bumper = 0
+        self.right_bumper = 0
+
         self.deadspot_min = DEFAULT_JOYSTICK_VALUE - DEADSPOT_SIZE
         self.deadspot_max = DEFAULT_JOYSTICK_VALUE + DEADSPOT_SIZE
 
-        self.left_joystick_buffer = create_joystick_buffer_dict(100)
-        self.right_joystick_buffer = create_joystick_buffer_dict(100)
         self.last_report = None
+
+
 
     def poll_controller(self): 
         """updates controller inputs if controller is found."""
         report = self.hid_input.read(64) #reads relevant bytes
         if len(report) > 10:
-            self.left_joystick_raw_values["x"] = report[2]
-            self.left_joystick_raw_values["y"] = report[4]
+            self.left_joystick_raw_values["x"] = report[2] << 8 | report[1]
+            self.left_joystick_raw_values["y"] = report[4] << 8 | report[3]
 
-            self.right_joystick_raw_values["x"] = report[6]
-            self.right_joystick_raw_values["y"] = report[8]
+            self.right_joystick_raw_values["x"] = report[6] << 8 | report[5]
+            self.right_joystick_raw_values["y"] = report[8] << 8 | report[7]
 
-            self.left_trigger = report[10]
-            self.right_trigger = report[12]
+            self.left_trigger = report[10] << 8 | report[9]
+            self.right_trigger = report[12] << 8 | report[11]
             
             self.last_report = report
 
-            if report[15] == 64:
-                self.left_trigger_button = 1
-            if report[15] == 128:
-                self.right_trigger_button = 1
-            else:
-                self.left_trigger = 0
-                self
+            self.left_bumper = int(report[14] & 0b1000000 != 0)
+            self.right_bumper = int(report[14] & 0b10000000 != 0) #we cast these to int as we use them in non-logic calcs later.
+
+            self.a_button = report[14] & 0b1 != 0
+            self.b_button = report[14] & 0b10 != 0
+            self.x_button = report[14] & 0b100 != 0
+            self.y_button = report[14] & 0b1000 != 0
+
+            self.start_button = report[15] & 0b100 != 0
+            self.screenshot_button = report[15] & 0b100 != 0
+            self.xbox_button = report[15] & 0b1000 != 0
+
             return True
+        
         else:
             return False
         
     def trigger_processer(self):
         output = self.left_trigger - self.right_trigger
-        return output * 5
+        return output
+
 
     def deadspot_control(self, raw_controller_input):
         if raw_controller_input < self.deadspot_min or raw_controller_input > self.deadspot_max:
@@ -151,33 +162,29 @@ class XBoxController:
         vertical = self.deadspot_control(joystick["y"]) - DEFAULT_JOYSTICK_VALUE
         horizontal = self.deadspot_control(joystick["x"]) - DEFAULT_JOYSTICK_VALUE
 
-        vertical_processed = int(vertical/16)
-        horizontal_processed = int(horizontal/16)
+        vertical_processed = int(vertical) # equivilent to dividing by 255
+        horizontal_processed = int(horizontal) # equivilent to dividing by 255
 
         output =  {"x": horizontal_processed, "y": vertical_processed}
         return output
 
-    def normalised_controller_output(self) -> List[int]:
+    def processed_controller_output(self) -> List[int]:
+        """Returns a processed value for each DoF in a dict"""
 
         left_joystick_output = self.joystick_processor(self.left_joystick_raw_values)
         right_joystick_output = self.joystick_processor(self.right_joystick_raw_values)
 
-        base_speed = left_joystick_output["x"]
-        shoulder_speed = left_joystick_output["y"]
+        base_speed = left_joystick_output["x"] >> 12
+        shoulder_speed = left_joystick_output["y"] >> 12
+        elbow_speed = right_joystick_output["y"] >> 12
 
-        elbow_speed = right_joystick_output["y"]
-        wrist_speed = right_joystick_output["x"]
+        wrist_speed = self.trigger_processer() / 64 
+        gripper_speed = (self.a_button - self.b_button) * 64
 
-        gripper_speed = self.trigger_processer()
-
-        output_list = [base_speed,shoulder_speed,elbow_speed,wrist_speed, 0]
+        output_list = [base_speed,shoulder_speed,elbow_speed,wrist_speed, gripper_speed]
 
         return output_list
     
-
-    def update_joints(self):
-        """This is the function that will update our target_pwm values using """ 
-
 
     def input_size_string(self, input_value, input_min, input_max):
         input_range = input_max - input_min
@@ -200,22 +207,24 @@ class XBoxController:
         #Horrible string literals.
         output = ""
         output += f"{'Left joystick:':>13}\n"
-        output += f"{'':>16}x:{self.left_joystick_raw_values['x']:>4}|{self.input_size_string(self.left_joystick_raw_values['x'], 0, MAX_JOYSTICK_VALUE)}"
-        output += f"y:{self.left_joystick_raw_values['y']:>4}|{self.input_size_string(self.left_joystick_raw_values['y'], 0, MAX_JOYSTICK_VALUE)}\n"
+        output += f"{'':>16}x:{self.left_joystick_raw_values['x']:10.0f}|{self.input_size_string(self.left_joystick_raw_values['x'], 0, MAX_JOYSTICK_VALUE)}"
+        output += f"y:{self.left_joystick_raw_values['y']:10.0f}|{self.input_size_string(self.left_joystick_raw_values['y'], 0, MAX_JOYSTICK_VALUE)}\n"
 
         output += f"{'Right joystick':>13}:\n"
-        output += f"{'':>16}x:{self.right_joystick_raw_values['x']:>4}|{self.input_size_string(self.right_joystick_raw_values['x'], 0, MAX_JOYSTICK_VALUE)}"
-        output += f"y:{self.right_joystick_raw_values['y']:>4}|{self.input_size_string(self.right_joystick_raw_values['y'], 0, MAX_JOYSTICK_VALUE)}\n"
+        output += f"{'':>16}x:{self.right_joystick_raw_values['x']:10.0f}|{self.input_size_string(self.right_joystick_raw_values['x'], 0, MAX_JOYSTICK_VALUE)}"
+        output += f"y:{self.right_joystick_raw_values['y']:10.0f}|{self.input_size_string(self.right_joystick_raw_values['y'], 0, MAX_JOYSTICK_VALUE)}\n"
     
-        output += f"{'bumpers':>13}\n"
-        output += f"{'left':>16}{self.left_trigger:>6}|{self.input_size_string(self.left_trigger, 0, MAX_TRIGGER_VALUE)}\n"
-        output += f"{'right':>16}{self.right_trigger:>6}|{self.input_size_string(self.right_trigger, 0, MAX_TRIGGER_VALUE)}\n\n"
+        output += f"{'triggers':>13}\n"
+        output += f"{'left':>16}{self.left_trigger:10.0f}|{self.input_size_string(self.left_trigger, 0, MAX_TRIGGER_VALUE)}\n"
+        output += f"{'right':>16}{self.right_trigger:10.0f}|{self.input_size_string(self.right_trigger, 0, MAX_TRIGGER_VALUE)}\n\n"
+        output += "bumpers\n"
+        output += f"{'left':>16}{self.left_bumper}\n"
+        output += f"{'right':>16}{self.right_bumper}\n"
         output += str(self.last_report)
         return output
 
 
 if __name__ == "__main__":
-    buffer = CircularBuffer()
     
     for device_dict in hid.enumerate():
         keys = list(device_dict.keys())
@@ -223,14 +232,24 @@ if __name__ == "__main__":
         for key in keys:
             print("%s : %s" % (key, device_dict[key]))
         print()
-
-    controller = XBoxController(1)
+    controller_values = find_xbox_controller()
+    controller = XBoxController(1, controller_values[0], controller_values[1])
     i = 0
-
-    print(buffer)
-
+    
+    max_time_delta = None
     while True:
+
+        start_time = datetime.now()
         new_controller_locations = controller.poll_controller()
+        print('\x1b[2J\x1b[H') #code generated by Claude.
         print(controller)
-        print()
-        time.sleep(0.001)
+        end_time = datetime.now()
+        time_delta = end_time - start_time
+
+        if (max_time_delta == None) or (time_delta > max_time_delta):
+            max_time_delta = time_delta
+
+
+        print(time_delta.microseconds)
+        print(max_time_delta.microseconds)
+        time.sleep(0.01)

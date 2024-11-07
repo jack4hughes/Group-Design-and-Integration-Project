@@ -41,7 +41,7 @@ class Robot():
         self.servo_angle_updater()
         self.send_joint_update_message()
     
-    def update_joints_from_controller_output(self, controller_output_list: dict) -> None:
+    def update_joints_from_speed_vector(self, controller_output_list: list) -> None:
         """ 
         takes a list from our controller object with the processed controller output and uses
         that list to update each joints PWM value."""
@@ -51,6 +51,12 @@ class Robot():
             target_position = current_position + speed
             joint.update_pwm(target_position)
 
+    def update_joints_from_position_vector(self, joint_vector: Union[np.array, list]):
+        if type(joint_vector) == list:
+            joint_vector = np.array(joint_vector).T
+
+        for joint, target_position in zip(self.joints, joint_vector.T):
+            joint.update_pwm(target_position)
 
 def create_joint_list_from_config_file(filename):
     joint_dicts = config_scripts.load_config_file_from_yaml(filename)

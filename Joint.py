@@ -35,6 +35,8 @@ class Joint:
     def __init__(self,
                  name: str = None,
                  joint_type = None,
+                 initial_pwm: int = None,
+                 angular_velocity = None,
                  servo_config_file: str = None,
                  servo_motor: ServoMotor = None,
                  initial_dh_dict: dict = None,
@@ -51,13 +53,19 @@ class Joint:
 
         self.inital_dh_dict = initial_dh_dict
 
+    def rotate(self, degrees):
+        raise NotImplementedError
+
+    def extend(self, degrees):
+        raise NotImplementedError
+
 class RevoluteJoint(Joint):
     """A joint which revolves around a point. For our robot that means the shoulder, elbow, and wrist joints"""
     def __init__(self,
                  initial_angle: float = None,
                  min_angle: float = None,
                  max_angle: float = None,
-                 
+                 inital_pwm: int = None,
                  name: str = None,
                  joint_type = None,
                  servo_config_file: str = None,
@@ -69,6 +77,7 @@ class RevoluteJoint(Joint):
         super().__init__(name,
                          joint_type,
                          servo_config_file,
+                         inital_pwm,
                          servo_motor,
                          initial_dh_dict,
                          pwm_pin)
@@ -88,7 +97,10 @@ class RevoluteJoint(Joint):
         output += f"current angle: {self.angle}{ANGLE_UNITS}\t\t{self.servo_motor.duty_cycle}{TIME_UNITS}\n"
         return output
     
-
+    def rotate(self, degrees):
+        pass
+        
+    
     def update_angle(self, target_angle) -> None:
         if self.min_angle > target_angle or self.max_angle < target_angle:
             raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {target_angle} min_val: {self.min_angle} max_val: {self.max_angle}")
@@ -112,7 +124,6 @@ class RevoluteJoint(Joint):
         current_duty_cycle = self.servo_motor.duty_cycle
         self.update_pwm(current_duty_cycle + input_size)
         return
-    
 
     def print_table_view(self):
         print_string = f"{self.name:15}{self.angle}{ANGLE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
@@ -120,11 +131,12 @@ class RevoluteJoint(Joint):
 
 class PrismaticJoint(Joint):
     """A Joint that moves in a straight line. This is used for our gripper."""
+    #TODO map PrismaticJoint update PWM method to extension.
     def __init__(self,
                 initial_extension: float = None,
                 min_extension: float = None,
                 max_extension: float = None,
-                
+                angular_velocity: float = None,
                 name: str = None,
                 joint_type = None,
                 servo_config_file: str = None,
@@ -135,15 +147,20 @@ class PrismaticJoint(Joint):
         
         super().__init__(name,
                          joint_type,
+                         angular_velocity,
                          servo_config_file,
                          servo_motor,
                          initial_dh_dict,
                          pwm_pin)
-        
+            
         self.min_extension = min_extension
         self.max_extension = max_extension
         self.initial_extension = initial_extension
         self.extension = initial_extension
+
+        self.min_pwm = self.servo_motor.duty_cycle_range[0]
+        self.max_pwm = self.servo_motor.duty_cycle_range[1]
+
     
     def __str__(self):
         output = ""
@@ -168,7 +185,14 @@ class PrismaticJoint(Joint):
             
             self.angle = self.servo_motor.pwm_to_angle(target_pwm)
             self.servo_motor.update_pwm_control_value(target_pwm)
-            
+
+    def update_pwm(self, target_pwm) -> None:
+        if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
+            raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
+            return
+        
+        self.servo_motor.update_pwm_control_value(target_pwm)
+               
     def print_table_view(self):
         print_string = f"{self.name:15}{self.extension}{DISTANCE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         print(print_string)
