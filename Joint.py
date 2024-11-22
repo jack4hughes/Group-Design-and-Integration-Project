@@ -3,10 +3,11 @@ import config_scripts
 import os
 from pprint import pprint
 import yaml
+import pprint
 import numpy as np
 from numpy import sin, cos  
-from Helper import ANGLE_UNITS, TIME_UNITS, DISTANCE_UNITS, CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME
-from Helper import scale_transform
+from ServoMotor import ANGLE_UNITS, TIME_UNITS, DISTANCE_UNITS, CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME
+from ServoMotor import scale_transform
 
 config_file_location = os.path.join(CONFIG_FOLDER_LOCATION, ROBOT_CONFIG_FILE_NAME)
 
@@ -36,20 +37,28 @@ class Joint:
                  name: str = None,
                  joint_type = None,
                  initial_pwm: int = None,
-                 angular_velocity = None,
                  servo_config_file: str = None,
                  servo_motor: ServoMotor = None,
                  initial_dh_dict: dict = None,
                  pwm_pin = None,
+                 max_motor_speed = 8,
                  ):
-
-        self.name = name
         
+        self.speed_reduction = 32/max_motor_speed
+        self.pwm_angle_calibration_correction = 1500 - initial_pwm
+        self.name = name
+
         if servo_motor == None:
+            print("Servo motor not found")
             if servo_config_file == None:
                 raise ValueError("Could not configure a servo motor for the joint!")
+            
+            print(servo_config_file)
             servo_dict = config_scripts.load_config_file_from_yaml("Motor Config Files/" + servo_config_file)
             self.servo_motor = ServoMotor(servo_dict)
+        else:
+            print(servo_motor)
+        self.servo_motor.duty_cycle = initial_pwm
 
         self.inital_dh_dict = initial_dh_dict
 
@@ -65,28 +74,23 @@ class RevoluteJoint(Joint):
                  initial_angle: float = None,
                  min_angle: float = None,
                  max_angle: float = None,
-                 inital_pwm: int = None,
+                 initial_pwm: int = None, #initial PWM to set motor to desired point.
                  name: str = None,
                  joint_type = None,
                  servo_config_file: str = None,
                  servo_motor: ServoMotor = None,
                  initial_dh_dict: dict = None,
                  pwm_pin = None,
+                 max_motor_speed = 8
                  ):
-        
-        super().__init__(name,
-                         joint_type,
-                         servo_config_file,
-                         inital_pwm,
-                         servo_motor,
-                         initial_dh_dict,
-                         pwm_pin)
-        
-        self.min_angle = min_angle
-        self.max_angle = max_angle
 
+        super().__init__(name,joint_type,initial_pwm, servo_config_file, servo_motor, initial_dh_dict, pwm_pin, max_motor_speed)
         self.min_pwm = self.servo_motor.angle_to_pwm(min_angle)
         self.max_pwm = self.servo_motor.angle_to_pwm(max_angle)
+
+        self.working_range = (min_angle, max_angle)
+        self.min_angle = self.working_range[0]
+        self.max_angle = self.working_range[1]
 
         self.initial_angle = initial_angle
         self.angle = initial_angle
@@ -101,17 +105,29 @@ class RevoluteJoint(Joint):
         pass
         
     
+    def get_angle(self, pwm: int = None) -> float:
+        print(self.initial_angle)
+        return self.servo_motor.pwm_to_angle(self.servo_motor.duty_cycle + self.pwm_angle_calibration_correction)
+
+
+
     def update_angle(self, target_angle) -> None:
-        if self.min_angle > target_angle or self.max_angle < target_angle:
+
+        if self.min_angle> target_angle or self.max_angle < target_angle:
             raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {target_angle} min_val: {self.min_angle} max_val: {self.max_angle}")
             return
-        
+
         self.angle = target_angle
-        target_pwm = self.servo_motor.angle_to_pwm(target_angle)
+        target_pwm = self.servo_motor.angle_to_pwm(target_angle) + self.pwm_angle_calibration_correction
         self.servo_motor.update_pwm_control_value(target_pwm)
+
+        if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
+            raise ValueError(f"Impossible PWM: the PWM provided is outside of our joint constraints. angle: {target_pwm} min_val: {self.min_pwm} max_val: {self.max_pwm}")
+            return
+        
     
     def update_pwm(self, target_pwm) -> None:
-        target_angle = self.servo_motor.pwm_to_angle(target_pwm)
+        target_angle = self.get_angle(target_pwm)
         if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
             raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
             return
@@ -126,7 +142,7 @@ class RevoluteJoint(Joint):
         return
 
     def print_table_view(self):
-        print_string = f"{self.name:15}{self.angle}{ANGLE_UNITS:10}{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
+        print_string = f"{self.name:15}{self.angle:10.2f}{ANGLE_UNITS:10}{self.servo_motor.duty_cycle:5}{TIME_UNITS:10}"
         print(print_string)
 
 class PrismaticJoint(Joint):
@@ -134,11 +150,11 @@ class PrismaticJoint(Joint):
     #TODO map PrismaticJoint update PWM method to extension.
     def __init__(self,
                 initial_extension: float = None,
-                min_extension: float = None,
+                min_extension: float = 0,
                 max_extension: float = None,
                 angular_velocity: float = None,
                 name: str = None,
-                joint_type = None,
+                joint_type: str = None,
                 servo_config_file: str = None,
                 servo_motor: ServoMotor = None,
                 initial_dh_dict: dict = None,
@@ -168,6 +184,7 @@ class PrismaticJoint(Joint):
         output += f"current distance: {self.extension}{DISTANCE_UNITS:10}\t{self.servo_motor.duty_cycle}{TIME_UNITS:10}"
         return output
     
+
     def update_angle(self, target_position) -> None:
         if self.min_extension > target_position or self.max_extension < target_position:
             raise ValueError(f"Impossible position: the position provided is outside of our joint constraints. position: {target_position} min_val: {self.min_extension} max_val: {self.max_extension}")
@@ -186,9 +203,10 @@ class PrismaticJoint(Joint):
             self.angle = self.servo_motor.pwm_to_angle(target_pwm)
             self.servo_motor.update_pwm_control_value(target_pwm)
 
+
     def update_pwm(self, target_pwm) -> None:
         if self.min_pwm > target_pwm or self.max_pwm < target_pwm:
-            raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.servo_motor.pwm_to_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
+            raise ValueError(f"Impossible angle: the angle provided is outside of our joint constraints. angle: {self.get_angle(target_pwm)} min_val: {self.min_angle} max_val: {self.max_angle}")
             return
         
         self.servo_motor.update_pwm_control_value(target_pwm)
@@ -199,13 +217,12 @@ class PrismaticJoint(Joint):
 
 def create_joint_from_robot_config_dict(joint_information_dict):
     if joint_information_dict["joint_type"] == "revolute":
+        print(joint_information_dict)
         return RevoluteJoint(**joint_information_dict)
     elif joint_information_dict["joint_type"] == "prismatic":
         return PrismaticJoint(**joint_information_dict)
     
 if __name__ == "__main__":
-    joint_info_dicts = config_scripts.load_config_file_from_yaml("Motor Config Files/robot_setup_config.yaml")
-    joints = [create_joint_from_robot_config_dict(joint_info_dict) for joint_info_dict in joint_info_dicts]
-
-    for joint in joints:
-        print(joint)
+    joint = RevoluteJoint(0,-90,90,1600,"test_joint","Prismatic","servo_1_config.yaml")
+    print(joint)
+    print(joint.get_angle())
