@@ -1,52 +1,41 @@
 """A collection of functions that generate paths for our robots"""
-
+import datetime
 from itertools import cycle, chain
 from Robot import Robot
 from typing import Iterable
 import numpy as np
-
-def lerp_path_generator(min_value: int, max_value: int, step_length: int):
-    """Linearly moves from one value to the next."""
-    step_values = iter(range(min_value, max_value, step_length))
-    return step_values
+from typing import Union, Collection
+from more_itertools import windowed   #https://more-itertools.readthedocs.io/en/stable/api.html#more_itertools.windowed
 
 
-def joint_lerp_generator(initial_position_vector: np.array, final_position_vector: np.array, steps: int):
-    """generates a path from one point in joint angle space to another. constant angular speed."""
-    output_matrix = np.linspace(initial_position_vector, final_position_vector, steps)
-    return output_matrix
-
-def triangle_loop(min_value, max_value, step_length):
-    """Loops from one angle to another in a triangular way. (IE linear there, linear back)"""
-    path_there = iter(range(min_value, max_value, step_length))
-    path_back = iter(range(max_value, min_value, -step_length))
-    rotation_cycle = iter(cycle(chain(path_there, path_back)))
-
-    return rotation_cycle
+def joint_space_lerp(initial_joint_pose: Union[list, np.array], final_joint_pose, time, updates_per_second):
+    updates_until_completion = int(time*updates_per_second)
+    position_matrix = np.linspace(initial_joint_pose, final_joint_pose, updates_until_completion, dtype=int)
+    return position_matrix
 
 
-def safe_path_to_initial_point_in_trajectory(initial_value: int, path_iterator: Iterable):
-    """Allows us to safely move to the starting point of our animation by LERPing to its initial value."""
-    first_point = next(path_iterator)
-    if first_point - initial_value == 0:
-        return path_iterator
-    elif first_point - initial_value > 0:
-        step_length = 1
-    elif first_point -  initial_value < 0:
-        step_length = -1
+def lerp_between_list_of_joints(list_of_joint_poses: Collection[np.array], time_to_next_joint: Collection[float], updates_per_second):
+    """Lerps between adjacent joints provided in a list of joint poses. Lerps between angle values with no IK"""
+    final_list_of_lerps = []
+    windowed_list = windowed(list_of_joint_poses, 2)
+    windowed_list = zip(windowed_list, time_to_next_joint)
+    for item in windowed_list:
+        print(item[0][0])
+        print(item[0][1])
+        print("____")
+        lerp = joint_space_lerp(item[0][0], item[0][1], item[1], updates_per_second)
+        final_list_of_lerps.append(lerp) # According to this collecting these in a list is more efficient than multiple np.concatenate. https://stackoverflow.com/questions/38470264/numpy-concatenate-is-slow-any-alternative-approach
 
-    initial_path = lerp_path_generator(initial_value, first_point, step_length)
-    output = chain(initial_path, path_iterator)
-
-    return output
+    return np.concatenate(final_list_of_lerps)
 
 
 if __name__ == "__main__":
     intial_joint_loc = np.array([500, 500, 500, 500, 500])
-    final_joint_loc = np.array([2500, 1000, 2500, 2500, 2500])
-    
-    print(intial_joint_loc)
-    print(final_joint_loc)
+    second_joint_loc = np.array([2500, 1000, 550, 350, 2500])
+    final_joint_loc = np.array([1500, 1500, 1500, 1500, 1650])
 
-    lerp_path = joint_lerp_generator(intial_joint_loc, final_joint_loc, 120).astype("int")
-    print(lerp_path)
+    lerp_path = joint_space_lerp(intial_joint_loc, final_joint_loc, 3, 50)
+    lerp_iterator = iter(lerp_path)
+
+    lerps = lerp_between_list_of_joints([intial_joint_loc, second_joint_loc, final_joint_loc, intial_joint_loc], [2,3,1,2], 50)
+    print(lerps.shape)

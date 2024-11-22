@@ -5,25 +5,29 @@
   min_angle: -90
   max_angle: 90
   initial_angle: 23.2
-  initial_pwm: 1757
+  initial_pwm: 1465
   initial_dh_dict:
-      joint_angle: 0
-      joint_distance: 5
-      common_normal_length: 3
-      link_twist_angle: 0
+    joint_angle: 60
+    joint_distance: 5
+    common_normal_length: 3
+    link_twist_angle: 0
+  max_motor_speed: 8
+
 
 - name: shoulder 
   servo_config_file: servo_1_config.yaml
   joint_type: revolute
   pwm_pin: None
+  initial_angle: 0
   min_angle: -90
   max_angle: 90
-  initial_pwm: 1593
+  initial_pwm: 1613
   initial_dh_dict:
     joint_angle: 0
     joint_distance: 5
     common_normal_length: 3
     link_twist_angle: 0
+  max_motor_speed: 8
 
 - name: elbow
   servo_config_file: servo_1_config.yaml
@@ -32,12 +36,13 @@
   min_angle: -90
   max_angle: 90
   initial_angle: 0
-  initial_pwm: 1670
+  initial_pwm: 763
   initial_dh_dict:
     joint_angle: 0
-    joint_distance: 0
+    joint_distance: 5
     common_normal_length: 0
     link_twist_angle: 0
+  max_motor_speed: 8
 
 - name: wrist
   servo_config_file: servo_1_config.yaml
@@ -45,13 +50,14 @@
   min_angle: -90
   max_angle: 90
   initial_angle: 0
-  initial_pwm: 1657
+  initial_pwm: 1500
   pwm_pin: None
   initial_dh_dict:
     joint_angle: 0
-    joint_distance: 0
+    joint_distance: 5
     common_normal_length: 0
     link_twist_angle: 0
+  max_motor_speed: 8
 
 - name: gripper
   servo_config_file: servo_1_config.yaml
@@ -59,11 +65,13 @@
   min_angle: -90
   max_angle: 90
   initial_angle: 0
-  initial_pwm: 1670
+  initial_pwm: 1500
   pwm_pin: None
   initial_dh_dict:
     joint_angle: 0
-    joint_distance: 0
+    joint_distance: 6
     common_normal_length: 0
     link_twist_angle: 0
+  max_motor_speed: 8
+  
 
