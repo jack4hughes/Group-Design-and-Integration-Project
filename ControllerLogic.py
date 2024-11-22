@@ -132,14 +132,17 @@ class XBoxController:
             self.left_bumper = int(report[14] & 0b1000000 != 0)
             self.right_bumper = int(report[14] & 0b10000000 != 0) #we cast these to int as we use them in non-logic calcs later.
 
-            self.a_button = report[14] & 0b1 != 0
-            self.b_button = report[14] & 0b10 != 0
-            self.x_button = report[14] & 0b100 != 0
-            self.y_button = report[14] & 0b1000 != 0
+            self.a_button_pressed = report[14] & 0b1 != 0
+            self.b_button_pressed = report[14] & 0b10 != 0
+            self.x_button_pressed = report[14] & 0b100 != 0
+            self.y_button_pressed = report[14] & 0b1000 != 0
 
-            self.start_button = report[15] & 0b100 != 0
+            self.start_button_pressed = report[15] & 0b100 != 0
             self.screenshot_button = report[15] & 0b100 != 0
             self.xbox_button = report[15] & 0b1000 != 0
+
+            buttons = ["a", "b", "x", "y", "start", "select", "x", "left_d_pad", "right_d_pad", "screenshot"]
+            self.button_flags = {button_name: False for button_name in buttons}
 
             return True
         
@@ -168,18 +171,20 @@ class XBoxController:
         output =  {"x": horizontal_processed, "y": vertical_processed}
         return output
 
+
     def processed_controller_output(self) -> List[int]:
+        #TODO: refactor to work with pre-processed controller values of 32, not 1024.
         """Returns a processed value for each DoF in a dict"""
 
         left_joystick_output = self.joystick_processor(self.left_joystick_raw_values)
         right_joystick_output = self.joystick_processor(self.right_joystick_raw_values)
 
-        base_speed = left_joystick_output["x"] >> 12
-        shoulder_speed = left_joystick_output["y"] >> 12
-        elbow_speed = right_joystick_output["y"] >> 12
+        base_speed = left_joystick_output["x"] >> 10
+        shoulder_speed = left_joystick_output["y"] >> 10
+        elbow_speed = right_joystick_output["y"] >> 10
 
-        wrist_speed = self.trigger_processer() / 64 
-        gripper_speed = (self.a_button - self.b_button) * 64
+        wrist_speed = self.trigger_processer() >> 5
+        gripper_speed = (self.left_bumper - self.right_bumper) << 4
 
         output_list = [base_speed,shoulder_speed,elbow_speed,wrist_speed, gripper_speed]
 
